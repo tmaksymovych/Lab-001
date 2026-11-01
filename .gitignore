@@ -1,0 +1,21 @@
+# Terraform state and backup files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform crash logs
+crash.log
+crash.*.log
+
+# Terraform plugin directory
+.terraform/
+.terraform.lock.hcl
+
+# Environment & credentials files
+.env
+*.pem
+credentials.json
+
+# OS files
+.DS_Store
+Thumbs.db
