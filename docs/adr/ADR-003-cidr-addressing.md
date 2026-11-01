@@ -1,12 +1,5 @@
 # ADR-003: VPC CIDR Addressing Scheme & Subnet Topology
 
-- **Status**: Accepted
-- **Date**: 2026-11-02
-- **Authors**: Student Engineer
-- **Course**: SE470 Cloud Architecture (Capstone Milestone 1)
-
----
-
 ## 1. Context & Problem Statement
 
 Milestone 1 requires designing a Virtual Private Cloud (VPC) network that will host a distributed, sharded key-value store across Milestones 2 through 5. The network topology must satisfy:

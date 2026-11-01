@@ -1,12 +1,5 @@
 # ADR-001: Choice of Infrastructure as Code (IaC) Tool
 
-- **Status**: Accepted
-- **Date**: 2026-11-02
-- **Authors**: Student Engineer
-- **Course**: SE470 Cloud Architecture (Capstone Milestone 1)
-
----
-
 ## 1. Context & Problem Statement
 
 To satisfy Milestone 1 requirements, all cloud infrastructure must be provisioned and managed declaratively without manual interventions in the AWS Management Console (Zero ClickOps). The project requires:

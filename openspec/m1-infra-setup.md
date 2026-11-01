@@ -2,9 +2,6 @@
 
 - **Proposal ID**: `RFC-2026-001`
 - **Milestone**: Milestone 1 (M1) — Infrastructure Setup
-- **Status**: Accepted
-- **Author**: Student Engineer
-- **Course**: SE470 Cloud Architecture (KSE ✕ AWS Academy 2026/27)
 - **Target System**: Serverless / Distributed Key-Value Store (Light DynamoDB)
 
 ---

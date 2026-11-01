@@ -1,12 +1,5 @@
 # ADR-002: Infrastructure Stack Layout & Boundary Decoupling
 
-- **Status**: Accepted
-- **Date**: 2026-11-02
-- **Authors**: Student Engineer
-- **Course**: SE470 Cloud Architecture (Capstone Milestone 1)
-
----
-
 ## 1. Context & Problem Statement
 
 Milestone 1 requires provisioning foundational networking resources (VPC, subnets, route tables, internet gateways) while also delivering declarative specifications for custom Read-Only IAM policies and Assumable Roles that are intentionally rejected by the AWS Academy sandbox environment.
