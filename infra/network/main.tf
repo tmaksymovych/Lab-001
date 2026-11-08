@@ -66,12 +66,9 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# 6. Private Route Table & Routes (Internal VPC only: 10.0.0.0/16 -> local)
+# 6. Private Route Table & Routes (Internal VPC + Gateway Endpoints, zero NAT Gateway)
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
-
-  # Implicit local route for var.vpc_cidr is managed by AWS automatically.
-  # No default 0.0.0.0/0 route is added, keeping shards isolated and eliminating NAT Gateway costs.
 
   tags = {
     Name = "light-dynamodb-private-rtb"
@@ -84,29 +81,112 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# 7. Baseline Security Group for Intra-VPC Cluster Communication
-resource "aws_security_group" "cluster_internal" {
-  name        = "light-dynamodb-cluster-internal-sg"
-  description = "Allows internal TCP communication between Coordinator and Shards"
+# 7. Free Gateway VPC Endpoints for S3 & DynamoDB (Post-Review Fix #1)
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id, aws_route_table.public.id]
+
+  tags = {
+    Name = "light-dynamodb-s3-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "dynamodb" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id, aws_route_table.public.id]
+
+  tags = {
+    Name = "light-dynamodb-dynamodb-endpoint"
+  }
+}
+
+# 8. Role-Based Security Groups with SG-to-SG Referencing (Post-Review Fix #2)
+resource "aws_security_group" "coordinator" {
+  name        = "light-dynamodb-coordinator-sg"
+  description = "Security group for Coordinator node in public subnet"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "Intra-VPC all traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "Client API requests (HTTP/gRPC)"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS client ingress"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Outbound to Shards inside VPC on RPC/API ports"
+    from_port   = 8080
+    to_port     = 9090
+    protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
-    description = "Allow all outbound intra-VPC traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.vpc_cidr]
+    description = "Outbound HTTPS for AWS APIs, S3/DynamoDB Endpoints, and updates"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
-    Name = "light-dynamodb-cluster-internal-sg"
+    Name = "light-dynamodb-coordinator-sg"
+    Role = "Coordinator"
+  }
+}
+
+resource "aws_security_group" "shard" {
+  name        = "light-dynamodb-shard-sg"
+  description = "Least-privilege SG for isolated Shard nodes (accepts only from Coordinator and self)"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Allow data/control plane requests ONLY from Coordinator SG"
+    from_port       = 8080
+    to_port         = 9090
+    protocol        = "tcp"
+    security_groups = [aws_security_group.coordinator.id]
+  }
+
+  ingress {
+    description = "Allow replication/gossip traffic ONLY between Shards (self)"
+    from_port   = 8080
+    to_port     = 9090
+    protocol    = "tcp"
+    self        = true
+  }
+
+  egress {
+    description = "Allow replication outbound to other Shards (self)"
+    from_port   = 8080
+    to_port     = 9090
+    protocol    = "tcp"
+    self        = true
+  }
+
+  egress {
+    description     = "Allow HTTPS outbound ONLY to S3 and DynamoDB Gateway VPC Endpoints"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id, aws_vpc_endpoint.dynamodb.prefix_list_id]
+  }
+
+  tags = {
+    Name = "light-dynamodb-shard-sg"
+    Role = "Shard"
   }
 }

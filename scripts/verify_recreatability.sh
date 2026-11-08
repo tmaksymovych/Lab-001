@@ -4,7 +4,6 @@ set -euo pipefail
 cd "$(dirname "$0")/../infra/network"
 
 LOG_FILE="../../docs/recreatability-proof.log"
-README_FILE="../../README.md"
 
 echo "=========================================================="
 echo " Automated Recreatability Benchmark (Milestone 1, Task 8)"
@@ -46,7 +45,10 @@ Provisioned Resources:
 - Public Subnets: $PUBLIC_SUBNETS
 - Private Subnets: $PRIVATE_SUBNETS
 - Internet Gateway ID: $(terraform output -raw internet_gateway_id)
-- Cluster Security Group: $(terraform output -raw cluster_internal_sg_id)
+- S3 Gateway Endpoint: $(terraform output -raw s3_endpoint_id)
+- DynamoDB Gateway Endpoint: $(terraform output -raw dynamodb_endpoint_id)
+- Coordinator Security Group: $(terraform output -raw coordinator_sg_id)
+- Shard Security Group: $(terraform output -raw shard_sg_id)
 
 Result: SUCCESS (Zero manual console interventions required).
 ======================================================

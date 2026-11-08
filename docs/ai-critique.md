@@ -1,58 +1,97 @@
-# AI Design Critique & Architecture Defense Transcript
+# Рев'ю архітектури Milestone 1
 
-This document records an AI architectural design review of the Milestone 1 foundational infrastructure, along with explicit technical arguments accepting or refuting the recommendations. This satisfies the defense requirement (*"You bring an AI critique of your architecture and either accept or refute 2–3 of its points, with arguments"*).
+## 1. Zero NAT: приватні шарди без жодного шляху назовні
+
+**Проблема.** В приватних підмережах є тільки маршрут `local`. Інстанс там не може:
+- виконати `yum/dnf install`, `pip install` чи `docker pull`;
+- завантажити бінарник шарда з GitHub, ECR чи S3;
+- дістатися до публічних ендпоінтів SSM, CloudWatch, STS та EC2 API.
+
+**Чим загрожує M2–M5.**
+- Шард не стартує через bootstrap (user-data). Autoscaling Group у M5 створюватиме інстанси, які не стануть healthy.
+- Метрики та логи недоступні, тому спостережуваність відсутня.
+- Типовий «фікс» під тиском дедлайну: перенести шарди в public-підмережі з публічними IP. Це руйнує всю модель ізоляції.
+
+**Рекомендація.**
+- Запечені AMI або артефакти в S3 з **Gateway VPC Endpoint для S3**. Він безкоштовний і закриває найбільшу потребу.
+- Для SSM/CloudWatch використовуйте Interface Endpoints. Вони платні (~$7/міс на AZ на endpoint), тому беріть лише потрібні.
+- Альтернатива: один NAT-інстанс `t3.nano` (або fck-nat) замість NAT Gateway, приблизно $3–4/міс.
+- NAT Gateway створюйте через `count`/змінну тільки на час лабораторних і знищуйте після них.
+- Рішення «без NAT» саме по собі нормальне. Помилка в тому, що ви не дали заміни: S3 endpoint відсутній, а плану bootstrap немає.
+
+## 2. Одна «все дозволено» Security Group на весь CIDR
+
+**Проблема.** Правило `-1 / 0-65535 / 10.0.0.0/16` порушує принцип найменших привілеїв.
+- Довіра йде до мережі, а не до ролі workload. Coordinator у public-підмережі та шарди в private лежать в одному CIDR і довіряють один одному повністю.
+- Компрометація Coordinator, який стоїть ближче до інтернету, дає безперешкодний доступ до всіх портів кожного шарда: replication, gossip, admin-порти та SSH.
+- Нічого не обмежує lateral movement.
+
+**Чим загрожує M2–M5.**
+- Не можна розділити data plane (клієнт → Coordinator), control plane (Coordinator → шарди) і replication plane (шард ↔ шард). Це ускладнює дебаг і аудит.
+- Складно довести, що репліки доступні тільки з потрібних джерел.
+
+**Рекомендація.**
+- Окремі SG: `coordinator-sg`, `shard-sg`, `bastion/ssm`.
+- Правила через **SG-to-SG reference** (`source_security_group_id`), а не CIDR. Це переживає автоскейлінг та зміну IP.
+- Конкретні порти: наприклад, `shard-sg` приймає gRPC-порт тільки від `coordinator-sg` і від самого себе (`self = true`) для реплікації.
+- Egress теж не залишайте `allow all` без потреби.
+- Ingress для Coordinator звузьте до потрібних портів і, за можливості, до відомих CIDR, а не `0.0.0.0/0`.
+
+## 3. Coordinator у public-підмережі з auto-assign IP: єдина точка відмови й атаки
+
+**Проблема.** `map_public_ip_on_launch = true` на рівні всієї підмережі видає публічний IP кожному інстансу, включно з тими, що запущені випадково.
+- Два Coordinator у двох AZ не дають HA без балансувальника. Публічні IP різні й змінюються при stop/start.
+- Немає ELB/NLB, Elastic IP чи DNS. Клієнти не мають стабільної точки входу.
+- Окремого bastion немає. SSH через публічний IP з відкритою SG означає брутфорс-сканування, яке з'являється за години після запуску.
+
+**Чим загрожує M2–M5.**
+- Failover Coordinator неможливий без зміни клієнтської конфігурації.
+- Для роутингу запитів по шардах це критично: це single point of failure усього кластера.
+
+**Рекомендація.**
+- Постав NLB/ALB перед Coordinator. Для обмеженого бюджету достатньо Elastic IP як мінімум.
+- Вимкніть `map_public_ip_on_launch` на рівні підмережі й призначайте IP явно, тільки де потрібно.
+- Доступ адміністратора через **SSM Session Manager**, без SSH. Перевірте, що `LabInstanceProfile` це дозволяє, і не відкривайте порт 22.
+
+## 4. Розподіл по 2 AZ погано сумісний з кворумом
+
+**Проблема.** Для реплікації та вибору лідера потрібен кворум. Дві AZ дають або 1+1 (втрата будь-якої зони = втрата кворуму), або розподіл 2+1 між трьома вузлами. Це обмеження топології, яке мережевий дизайн закладає наперед.
+
+**Чим загрожує M2–M5.**
+- Raft/Paxos-подібні схеми не мають автоматичного failover при падінні однієї AZ. Для швидкого обмеження доступу вручну доведеться відновлювати кластер.
+- Cross-AZ трафік платний (~$0.01/GB в кожну сторону). Синхронна реплікація між AZ при навантажувальних тестах швидко з'їсть частину бюджету.
+- Реплікація та rebalancing шардів теж генерують cross-AZ трафік.
+
+**Рекомендація.**
+- Для кворуму додайте третю AZ (`us-east-1c`) принаймні в private-підмережі. Це лише додатковий ресурс підмережі і нічого не коштує.
+- Закладіть /24 для третьої зони зараз, щоб не міняти CIDR-план пізніше.
+- Задокументуйте, що рахується в бюджет: cross-AZ GB.
+
+## 5. Операційні прогалини: state, IAM-spec і відсутність observability
+
+**Проблема.**
+- **Локальний tfstate** без блокування й бекапу. Якщо Learner Lab перезапустять або сесія закінчиться, стан втрачено, а ресурси в AWS залишаться «осиротілими» (витрачають бюджет). Це також ризик для командної роботи. Локальний state у git ще й може містити секрети.
+- **Два стеки з локальним state** не мають чистого способу обміну даними: `infra/network` не може передати VPC/subnet ID іншим стекам через `terraform_remote_state` надійно. Потрібні явні `outputs` і контракт.
+- **`iam-spec` не деплоїться**, тому перевірка `validate/plan` не доводить, що політика працює. `plan` без apply не ловить помилки на рівні IAM (наприклад, неправильні ARN чи умови). Це «мертвий код», що розходиться з реальністю. Це має бути чітко позначено як специфікація, а не реалізація.
+- Відсутні VPC Flow Logs і CloudTrail-орієнтири. Мережеві проблеми M3–M4 (дропи реплікації, таймаути) дебажити буде нічим.
+- Немає тегів і бюджетних guardrails. У Learner Lab ресурси, що забули, з'їдають $50–100 непомітно.
+
+**Рекомендація.**
+- Remote backend: S3 bucket + DynamoDB lock table. Перевірте, що Lab дозволяє створення обох (зазвичай так). Якщо ні, хоча б періодично бекапте `terraform.tfstate` і ведіть `.gitignore`.
+- Вмикайте VPC Flow Logs у CloudWatch (або S3, що дешевше) для приватних підмереж.
+- Єдиний набір `default_tags` у провайдері (`project`, `milestone`, `owner`) і скрипт `terraform destroy` для зупинки витрат після сесії.
+- Для `iam-spec` додайте статичні перевірки (`tflint`, `checkov`) і явно задокументуйте, що це специфікація без деплою.
 
 ---
 
-## 1. Raw AI Architecture Critique
+## Підсумок за пріоритетом
 
-> **AI Reviewer Observation**:
->
-> "The proposed Milestone 1 network topology establishes a solid foundation using Terraform, separating public ingress subnets from private subnets across dual Availability Zones with clear CIDR planning (`10.0.0.0/16`). However, the following architectural weaknesses and production gaps must be addressed:
->
-> 1. **Critique 1 (Outbound Egress in Private Subnets)**: The private subnets lack a managed AWS NAT Gateway or NAT instance. Without outbound egress, database shard nodes provisioned in these subnets in Milestone 2 will fail to update operating system packages, pull upstream security patches, or download application dependencies during bootstrapping.
-> 2. **Critique 2 (Multi-AZ High Availability)**: The network layout properly distributes public and private subnets across two distinct Availability Zones (`us-east-1a` and `us-east-1b`). This conforms to AWS Well-Architected Framework best practices, eliminating physical data center failure as a single point of failure (SPOF) for future quorum replication.
-> 3. **Critique 3 (Network Observability & Security Auditing)**: The architecture omits VPC Flow Logs. Without flow logging attached to the VPC or subnets and exported to CloudWatch Logs or S3, it is impossible to audit rejected traffic, verify Security Group rule enforcement, or troubleshoot network packet loss between the future coordinator and shard nodes.
-> 4. **Critique 4 (Single Cluster-Wide Security Group)**: The current configuration defines a single blanket Security Group (`cluster-internal-sg`) allowing all intra-VPC traffic on all ports (`0-65535`). This violates zero-trust segmentation between the public entry point (Coordinator) and storage nodes (Shards)."
+| # | Ризик | Критичність | Вартість виправлення |
+|---|---|---|---|
+| 1 | Немає egress / VPC-endpoints | Висока (блокує M2) | Низька (S3 Gateway Endpoint безкоштовний) |
+| 2 | Одна SG «allow all» | Висока (безпека) | Нульова |
+| 3 | Coordinator без стабільної точки входу | Середня | Низька |
+| 4 | 2 AZ vs кворум | Середня (архітектурна) | Нульова зараз, дорога пізніше |
+| 5 | State, observability, guardrails | Середня | Низька |
 
----
-
-## 2. Technical Evaluation & Defense Arguments (Accepted vs. Refuted)
-
-### Point 1: Outbound Egress via Managed NAT Gateway (Critique 1)
-- **Verdict**: **REFUTED (Rejected with Technical & FinOps Rationale)**.
-- **Defense Rationale**:
-  - The AI’s critique assumes an unconstrained commercial enterprise environment where ongoing cloud infrastructure fees are secondary to operational convenience.
-  - In our operational environment (AWS Academy Learner Lab), student accounts are bounded by a strict hard ceiling of **$100 total lifetime credits**.
-  - A managed AWS NAT Gateway incurs an hourly base charge of **$0.045 / hour / AZ**, totaling **~$32.40 / month for 1 AZ** or **~$64.80 / month for 2 AZs**, excluding per-gigabyte data processing fees ($0.045/GB).
-  - Deploying NAT Gateways would deplete 65% to 100% of the entire course budget within 30 days while completely idle, rendering Milestones 2 through 5 undeployable.
-  - **Engineering Solution**: Private subnets remain strictly isolated. For Milestone 2, dependencies and binaries are pre-baked into container images / Golden AMIs or proxied via the Coordinator host located in the public subnet. For AWS services (S3 and DynamoDB), free Gateway VPC Endpoints are utilized at $0.00 cost.
-
----
-
-### Point 2: Dual Availability Zone Topology (Critique 2)
-- **Verdict**: **ACCEPTED**.
-- **Defense Rationale**:
-  - Distributing public and private subnets across `us-east-1a` and `us-east-1b` aligns directly with the **Reliability Pillar** of the AWS Well-Architected Framework.
-  - This layout directly anticipates Milestone 3 (Replication with $R + W > N$ quorums), where each shard requires 3+ replicas. Distributing replicas across distinct physical AZs ensures that a power or network partition within an individual AWS data center cannot compromise quorum availability.
-  - Because AWS charges zero fees for creating subnets across multiple AZs (only intra-AZ cross-traffic carries nominal $0.01/GB transfer costs), this provides high availability at zero baseline cost.
-
----
-
-### Point 3: VPC Flow Logs for Telemetry (Critique 3)
-- **Verdict**: **REFUTED for Milestone 1 (Deferred to Milestone 4)**.
-- **Defense Rationale**:
-  - While VPC Flow Logs are a recognized best practice for production observability, provisioning Flow Logs in Milestone 1 introduces unbudgeted CloudWatch Logs ingestion and storage charges ($0.50/GB ingested).
-  - In Milestone 1, there is zero live compute traffic traversing the network. Exporting empty or keep-alive network logs to CloudWatch generates unnecessary billing overhead and creates additional IAM dependency hurdles within the restricted sandbox.
-  - Full observability (metrics, structured logs, and tracing) is explicitly scheduled and scoped under **Milestone 4 (Observability stack & MCP server)**. Introducing it prematurely in Milestone 1 violates our layered delivery strategy.
-
----
-
-### Point 4: Layered Security Groups (Critique 4)
-- **Verdict**: **ACCEPTED for Milestone 2 Roadmap**.
-- **Defense Rationale**:
-  - The critique correctly identifies that an intra-VPC `0-65535` rule violates the principle of least privilege.
-  - In Milestone 1, compute services do not yet exist, and application port allocations (HTTP REST vs. gRPC internal RPC ports) have not been locked in an ADR.
-  - For Milestone 1, `cluster_internal_sg` acts as an initial connectivity baseline. In Milestone 2 (governed by ADR-004 on API protocols), we will replace this baseline with two discrete Security Groups:
-    1. `coordinator-sg`: Ingress HTTP/gRPC from trusted external CIDRs; egress to `shard-sg` on internal RPC port only.
-    2. `shard-sg`: Ingress restricted exclusively to the `coordinator-sg` identifier (Security Group reference chaining), preventing direct access from any other host.
+Найважливіше зробити до M2: S3 Gateway Endpoint, розділити Security Groups і додати третю AZ у CIDR-план. Це майже безкоштовно зараз і дорого переробляти пізніше.

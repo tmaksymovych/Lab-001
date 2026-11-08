@@ -1,5 +1,5 @@
 variable "aws_region" {
-  description = "AWS region"
+  description = "AWS region (N. Virginia)"
   type        = string
   default     = "us-east-1"
 }

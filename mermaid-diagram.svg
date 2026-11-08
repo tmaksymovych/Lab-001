@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 668.0944999999999 1078.5" width="668.0944999999999" height="1078.5" style="--bg:#18181B;--fg:#F4F4F5;--line:#71717A;--muted:#A1A1AA;--surface:#27272A;--border:#3F3F46;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<g class="subgraph" data-id="VPC" data-label="VPC: 10.0.0.0/16 (us-east-1)">
+  <rect x="40" y="310.9" width="588.0944999999999" height="727.6000000000001" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="40" y="310.9" width="588.0944999999999" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="52" y="324.9" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">VPC: 10.0.0.0/16 (us-east-1)</text>
+<g class="subgraph" data-id="AZ1" data-label="us-east-1a (Непарні)">
+  <rect x="246.04499999999996" y="445.79999999999995" width="244.24900000000002" height="317.7" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="246.04499999999996" y="445.79999999999995" width="244.24900000000002" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="258.04499999999996" y="459.79999999999995" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">us-east-1a (Непарні)</text>
+</g>
+<g class="subgraph" data-id="AZ2" data-label="us-east-1b (Парні)">
+  <rect x="253.3045" y="891.8000000000001" width="358.78999999999996" height="130.7" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="253.3045" y="891.8000000000001" width="358.78999999999996" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="265.30449999999996" y="905.8000000000001" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">us-east-1b (Парні)</text>
+</g>
+</g>
+<polyline class="edge" data-from="Internet" data-to="IGW" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="497.18741666666665,172 497.18741666666665,220" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="IGW" data-to="RT_Pub" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="497.18741666666665,256.9 497.18741666666665,354.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="RT_Pub" data-to="Pub1" data-style="dotted" data-arrow-start="false" data-arrow-end="true" points="497.1874166666666,391.79999999999995 497.1874166666666,440.79999999999995 404.7835,440.79999999999995 404.7835,489.79999999999995" fill="none" stroke="var(--_line)" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="RT_Pub" data-to="Pub2" data-style="dotted" data-arrow-start="false" data-arrow-end="true" points="497.1874166666666,391.79999999999995 497.1874166666666,440.79999999999995 524.361,440.79999999999995 524.361,935.8000000000001" fill="none" stroke="var(--_line)" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="RT_Priv" data-to="Priv1" data-style="dotted" data-arrow-start="false" data-arrow-end="true" points="205.16799999999998,391.79999999999995 205.16799999999998,534.3 337.48349999999994,534.3 337.48349999999994,676.8" fill="none" stroke="var(--_line)" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="RT_Priv" data-to="Priv2" data-style="dotted" data-arrow-start="false" data-arrow-end="true" points="205.16799999999998,391.79999999999995 205.16799999999998,534.3 346.96599999999995,534.3 346.96599999999995,935.8000000000001" fill="none" stroke="var(--_line)" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Pub1" data-to="Priv2" data-style="solid" data-arrow-start="true" data-arrow-end="true" data-label="10.0.0.0/16 (Internal SG)" points="387.95366666666666,249.60000000000002 387.95366666666666,261.6 398.0835,261.6 398.08349999999996,538.9 332.85316666666665,538.9 332.85316666666665,624.9000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" marker-start="url(#arrowhead-start)" />
+<polyline class="edge" data-from="Pub1" data-to="Priv1" data-style="solid" data-arrow-start="true" data-arrow-end="true" data-label="10.0.0.0/16 (Internal SG)" points="381.61333333333334,560.5 381.61333333333334,572.5 371.48349999999994,572.5 371.48349999999994,640.8 362.62966666666665,640.8 362.62966666666665,676.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" marker-start="url(#arrowhead-start)" />
+<g class="edge-label" data-from="Pub1" data-to="Priv2" data-label="10.0.0.0/16 (Internal SG)">
+  <rect x="337.08349999999996" y="501.6" width="121.60000000000002" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="397.88349999999997" y="516.75" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">10.0.0.0/16 (Internal SG)</text>
+</g>
+<g class="edge-label" data-from="Pub1" data-to="Priv1" data-label="10.0.0.0/16 (Internal SG)">
+  <rect x="310.4835" y="603.5" width="121.60000000000002" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="371.2835" y="618.65" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">10.0.0.0/16 (Internal SG)</text>
+</g>
+<g class="node" data-id="Internet" data-label="🌐 Інтернет" data-shape="circle">
+  <circle cx="497.18741666666665" cy="106" r="66" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="497.18741666666665" y="106" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">🌐 Інтернет</text>
+</g>
+<g class="node" data-id="IGW" data-label="🚪 Internet Gateway" data-shape="rectangle">
+  <rect x="419.15541666666667" y="220" width="156.064" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="497.18741666666665" y="238.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">🚪 Internet Gateway</text>
+</g>
+<g class="node" data-id="RT_Pub" data-label="📋 Public RT: 0.0.0.0/0 ➔ IGW" data-shape="rectangle">
+  <rect x="390.6269166666666" y="354.9" width="213.12099999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="497.1874166666666" y="373.34999999999997" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">📋 Public RT: 0.0.0.0/0 ➔ IGW</text>
+</g>
+<g class="node" data-id="RT_Priv" data-label="📋 Private RT: 10.0.0.0/16 ➔ local (Zero NAT)" data-shape="rectangle">
+  <rect x="56" y="354.9" width="298.33599999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="205.16799999999998" y="373.34999999999997" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">📋 Private RT: 10.0.0.0/16 ➔ local (Zero NAT)</text>
+</g>
+<g class="node" data-id="Pub1" data-label="🟢 public-subnet-1
+10.0.1.0/24 (251 IP)
+Coordinator" data-shape="rectangle">
+  <rect x="335.27299999999997" y="489.79999999999995" width="139.02100000000002" height="70.7" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="404.7835" y="525.15" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="404.7835" dy="-12.350000000000001">🟢 public-subnet-1</tspan><tspan x="404.7835" dy="16.900000000000002">10.0.1.0/24 (251 IP)</tspan><tspan x="404.7835" dy="16.900000000000002">Coordinator</tspan></text>
+</g>
+<g class="node" data-id="Priv1" data-label="🔒 private-subnet-1
+10.0.11.0/24 (251 IP)
+Shard 1" data-shape="rectangle">
+  <rect x="262.04499999999996" y="676.8" width="150.877" height="70.7" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="337.48349999999994" y="712.15" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="337.48349999999994" dy="-12.350000000000001">🔒 private-subnet-1</tspan><tspan x="337.48349999999994" dy="16.900000000000002">10.0.11.0/24 (251 IP)</tspan><tspan x="337.48349999999994" dy="16.900000000000002">Shard 1</tspan></text>
+</g>
+<g class="node" data-id="Pub2" data-label="🟢 public-subnet-2
+10.0.2.0/24 (251 IP)
+Standby / ALB" data-shape="rectangle">
+  <rect x="452.62749999999994" y="935.8000000000001" width="143.467" height="70.7" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="524.361" y="971.1500000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="524.361" dy="-12.350000000000001">🟢 public-subnet-2</tspan><tspan x="524.361" dy="16.900000000000002">10.0.2.0/24 (251 IP)</tspan><tspan x="524.361" dy="16.900000000000002">Standby / ALB</tspan></text>
+</g>
+<g class="node" data-id="Priv2" data-label="🔒 private-subnet-2
+10.0.12.0/24 (251 IP)
+Shard 2" data-shape="rectangle">
+  <rect x="269.30449999999996" y="935.8000000000001" width="155.32299999999998" height="70.7" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="346.96599999999995" y="971.1500000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="346.96599999999995" dy="-12.350000000000001">🔒 private-subnet-2</tspan><tspan x="346.96599999999995" dy="16.900000000000002">10.0.12.0/24 (251 IP)</tspan><tspan x="346.96599999999995" dy="16.900000000000002">Shard 2</tspan></text>
+</g>
+</svg>

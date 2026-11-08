@@ -1,62 +1,65 @@
-# Service Quotas & FinOps Budgeting Report (Milestone 1 — Tasks 6 & 7)
+# Огляд сервісних квот та FinOps-розрахунок бюджету (Milestone 1 — Завдання 6 і 7)
 
-## 1. Milestone 2 Architecture Sizing Baseline
+## 1. Базова конфігурація для Milestone 2
 
-In Milestone 2, the system will scale from network setup to a functional sharded distributed store:
-- **1 × Coordinator Node**: Exposes the REST API, manages the consistent hashing ring, and routes incoming requests.
-- **2 × Shard Storage Nodes**: Store local partitions in memory/disk and execute CRUD operations.
-- **Total Compute Nodes**: 3 instances.
-- **Deployment Region**: `us-east-1` (N. Virginia).
+У Milestone 2 ми переходимо від налаштування мережі до розгортання шардованого сховища даних:
+- **1 × Coordinator Node**: піднімається в публічній підмережі (`10.0.1.0/24`), приймає зовнішні запити (REST / gRPC), рахує хеш-кільце (Consistent Hashing) та маршрутизує трафік.
+- **2 × Shard Storage Nodes**: піднімаються в ізольованих приватних підмережах (`10.0.11.0/24` у зоні `eu-north-1a` та `10.0.12.0/24` у зоні `eu-north-1b`), зберігають дані та виконують CRUD-операції.
+- **Загальна кількість серверів**: 3 інстанси.
+- **Регіон розгортання**: `eu-north-1` (Europe — Stockholm).
 
 ---
 
-## 2. Service Quotas Audit (Task 6)
+## 2. Аналіз сервісних квот (Service Quotas Audit — Task 6)
 
-The following service quotas govern our deployment within the AWS Academy Learner Lab environment:
+Нижче наведено ключові ліміти акаунта в середовищі AWS Academy, які ми перевірили і які можуть обмежити розгортання кластера:
 
-| Service / Resource Quota | Standard Default | AWS Academy Sandbox Limit | Projected M2 Consumption | Status & Bottleneck Evaluation |
+| Ресурс / Сервісна квота | Стандартний ліміт AWS | Ліміт в AWS Academy | Споживання в M2 | Оцінка ризику та вузьких місць |
 |---|---|---|:---:|---|
-| **VPCs per Region** | 5 | 5 | 1 | **Safe**. Consumption: 20% of limit. |
-| **Subnets per VPC** | 200 | 200 | 4 | **Safe**. 2 public + 2 private subnets. |
-| **Internet Gateways per Region** | 5 | 5 | 1 | **Safe**. 1 IGW attached to `light-dynamodb-vpc`. |
-| **Running On-Demand Standard (A, C, D, M, R, T, Z) Instances** | 32 vCPUs | 4 to 8 vCPUs | 6 vCPUs (3 × `t3.micro` @ 2 vCPU) | **Warning / Critical Boundary**. Standard Learner Labs cap total active vCPUs at 4 or 8 vCPUs. Sizing nodes to `t3.micro` (2 vCPU each) consumes 6 vCPUs, remaining strictly within the 8 vCPU ceiling. |
-| **Elastic IP Addresses (EIP)** | 5 | 5 | 0 to 1 | **Safe**. Nodes in private subnets do not require public EIPs. |
-| **EBS Volume Storage (gp3)** | 300 TB | 100 GB | 30 GB (3 × 10 GB) | **Safe**. 30% of typical sandbox volume capacity. |
+| **VPCs per Region** | 5 | 5 | 1 | **Безпечно** (20% від ліміту). |
+| **Subnets per VPC** | 200 | 200 | 4 | **Безпечно** (2 публічні + 2 приватні підмережі). |
+| **Internet Gateways per Region** | 5 | 5 | 1 | **Безпечно** (1 IGW, прив'язаний до нашої VPC). |
+| **Running On-Demand Standard (A, C, D, M, R, T, Z) Instances** | 32 vCPUs | **4 або 8 vCPUs** | **6 vCPUs** (3 × `t3.micro` по 2 vCPU) | ⚠️ **Критичне вузьке місце!** Пісочниця жорстко обмежує сумарну кількість активних ядер процесора. Вибір інстансів `t3.micro` (2 vCPU) дозволяє вписати всі 3 ноди (6 vCPU) у ліміт 8 vCPU. Більші інстанси (`t3.large`) одразу заблокуються квотою. |
+| **Elastic IP Addresses (EIP)** | 5 | 5 | 0–1 | **Безпечно**. Шарди у приватних підмережах не потребують зовнішніх IP. |
+| **EBS Volume Storage (`gp3`)** | 300 TB | 100 GB | 30 GB (3 × 10 GB) | **Безпечно** (30% від ліміту дискового простору пісочниці). |
 
-> **Key Takeaway for Defense**: The primary infrastructure bottleneck in AWS Academy is the **vCPU quota on running EC2 instances**. Selecting larger instance families (`t3.medium` with 2 vCPUs and more RAM or `t3.large` with 8 vCPUs) would immediately breach the regional quota and block cluster bring-up in Milestone 2.
+> **Примітка щодо регіональних обмежень (SCP):** У деяких конфігураціях AWS Academy Learner Lab політика Service Control Policy (SCP) може дозволяти запуск EC2 виключно у `us-east-1` / `us-west-2`. Завдяки параметризації змінною `var.aws_region` у Terraform, за потреби стек перемикається однією змінною без жодної зміни архітектури.
 
 ---
 
-## 3. FinOps Monthly Budget Model for Milestone 2 (Task 7)
+## 3. FinOps-розрахунок місячного бюджету для Milestone 2 (Task 7)
 
-The monthly operational budget is modeled assuming 24/7 continuous execution over a 30-day month (730 hours) in `us-east-1`.
+Розрахунок виконано для регіону **Stockholm (`eu-north-1`)** за умови безперервної роботи 24/7 протягом усього місяця (730 годин).
+*(Примітка: у регіоні `eu-north-1` немає застарілого покоління `t2.micro`, тому базовим інстансом є сучасніший і дешевший `t3.micro`).*
 
-### 3.1 Itemized Cost Estimation
+### 3.1 Деталізація витрат (24/7 режим)
 
-| Resource Component | Specifications | Unit Rate (us-east-1) | Quantity / Usage | Monthly Cost (USD) |
+| Компонент інфраструктури | Специфікація | Тариф у `eu-north-1` | Кількість / Обсяг | Місячна вартість (USD) |
 |---|---|---|:---:|---:|
-| **Coordinator Compute** | `t3.micro` (2 vCPU, 1 GB RAM, Burstable) | $0.0104 / hour | 1 instance × 730 hrs | **$7.59** |
-| **Shard 1 Compute** | `t3.micro` (2 vCPU, 1 GB RAM, Burstable) | $0.0104 / hour | 1 instance × 730 hrs | **$7.59** |
-| **Shard 2 Compute** | `t3.micro` (2 vCPU, 1 GB RAM, Burstable) | $0.0104 / hour | 1 instance × 730 hrs | **$7.59** |
-| **EBS Storage** | General Purpose SSD (`gp3`), Root volumes | $0.08 / GB-month | 3 × 10 GB = 30 GB | **$2.40** |
-| **VPC Infrastructure** | VPC, 4 Subnets, Route Tables, IGW | $0.00 | 1 VPC stack | **$0.00** |
-| **Data Transfer (Intra-VPC)** | Inter-AZ cross-traffic between Coordinator & Shards | $0.01 / GB | ~15 GB benchmark traffic | **$0.15** |
-| **Public IPv4 Address** | In-use public IPv4 on Coordinator node | $0.005 / hour | 1 IPv4 × 730 hrs | **$3.65** |
-| **Total Projected Cost (24/7 continuous)** | | | | **$28.97 / month** |
+| **Coordinator Node** | `t3.micro` (2 vCPU, 1 GB RAM, Linux) | $0.0098 / год | 1 інстанс × 730 год | **$7.15** |
+| **Shard 1 Node** | `t3.micro` (2 vCPU, 1 GB RAM, Linux) | $0.0098 / год | 1 інстанс × 730 год | **$7.15** |
+| **Shard 2 Node** | `t3.micro` (2 vCPU, 1 GB RAM, Linux) | $0.0098 / год | 1 інстанс × 730 год | **$7.15** |
+| **Диски EBS (`gp3`)** | General Purpose SSD, системні томи | $0.088 / GB-міс | 3 × 10 GB = 30 GB | **$2.64** |
+| **Мережа (VPC, Subnets, IGW)**| VPC, 4 підмережі, таблиці маршрутів, IGW | $0.00 | 1 стек | **$0.00** |
+| **NAT Gateway** | Відсутній згідно з ADR (Zero NAT Gateway) | $0.048 / год | **0 шт.** | **$0.00** |
+| **Public IPv4 Address** | Публічна IP-адреса на вузлі Coordinator | $0.005 / год | 1 IPv4 × 730 год | **$3.65** |
+| **Міжзонний трафік (Inter-AZ)** | Передача даних між `eu-north-1a` та `eu-north-1b` | $0.01 / GB | ~15 GB (тести YCSB) | **$0.15** |
+| **РАЗОМ (безперервна робота 24/7)** | | | | **$27.89 / місяць** |
 
 ---
 
-## 4. Sandbox Credit Ceiling Comparison & Burn-Rate Strategy
+## 4. Порівняння зі стелею бюджету пісочниці та економія
 
-### Credit Cap Comparison:
-- **AWS Academy Learner Lab Lifetime Credit Ceiling**: **$100.00** (or $50.00 in restricted cohorts).
-- **Projected Continuous M2 Burn Rate**: **$28.97 / month** (representing ~29.0% of the $100 ceiling over an entire month).
+### Порівняння з лімітом кредитів:
+- **Стеля бюджету AWS Academy**: **$50.00 – $100.00** на весь курс.
+- **Прогнозовані витрати M2 (24/7)**: **$27.89 / місяць** (приблизно 28% від $100 бюджету).
 
-### FinOps Optimization Strategy (Cloud Financial Management CF-2):
-1. **Zero NAT Gateway Policy (Savings: ~$32.40/mo per AZ)**:
-   - If a managed NAT Gateway were provisioned in each AZ, hourly gateway fees ($0.045/hr × 730 × 2 = $65.70/mo) would increase total monthly spend to **$94.67/month**, exhausting the credit pool in ~31 days even with zero benchmark traffic.
-   - Eliminating the NAT Gateway guarantees financial viability throughout all five milestones.
-2. **Scheduled Teardown / Stop Protocol**:
-   - During active development and benchmarking, instances are run on-demand for ~2 hours per session.
-   - 3 × `t3.micro` running for 20 total active development hours = $0.0312 × 20 = **$0.62 total compute cost**.
-   - Stopping compute nodes between milestones reduces monthly consumption from $28.97 to **<$5.00 total**, leaving >95% of the sandbox budget intact for Milestones 3, 4, and 5.
+### Чому наша архітектура рятує бюджет:
+1. **Економія на відмові від NAT Gateway ($35.04 – $70.08 / місяць):**
+   - У регіоні Стокгольм (`eu-north-1`) 1 година роботи NAT Gateway коштує **$0.048** (або **$35.04/міс** за 1 зону і **$70.08/міс** за 2 зони доступності).
+   - Якби ми додали NAT Gateway у дві зони, щомісячний рахунок виріс би з **$27.89** до **$97.97 / місяць**, що спалило б увесь бюджет пісочниці за один місяць навіть без навантаження!
+2. **Реальний режим роботи (On-Demand сесії):**
+   - Оскільки вся інфраструктура описана в Terraform і підіймається за ~35 секунд, ми не тримаємо інстанси увімкненими 24/7.
+   - Якщо піднімати стек лише на час розробки, тестів YCSB та захисту (~25 годин на місяць):
+     - Обчислення + IPv4: $3 \times \$0.0098 + \$0.005 = \$0.0344 / \text{год} \times 25 \text{ год} = \mathbf{\$0.86}$.
+     - Разом із дисками реальні витрати за Milestone 2 складуть **менше $3.50**, зберігаючи понад 95% кредитів на фінальні майлстоуни.

@@ -1,10 +1,3 @@
-# Milestone 1 - Tasks 2 & 3: Read-Only Policy and Assumable Role
-# Note: The AWS Academy Learner Lab explicit permission boundary / SCP denies creating
-# custom IAM roles and policies (Error: AccessDenied on iam:CreateRole/CreatePolicy).
-# This configuration serves as the declarative IaC deliverable proving how this security
-# pattern is designed and why the sandbox rejects its execution.
-
-# 1. Custom Read-Only Policy Document (Allows ONLY read/describe actions, zero mutation)
 data "aws_iam_policy_document" "read_only" {
   statement {
     sid    = "AllowReadOnlyAccess"

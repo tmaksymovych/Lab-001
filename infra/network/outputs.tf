@@ -23,7 +23,22 @@ output "internet_gateway_id" {
   value       = aws_internet_gateway.main.id
 }
 
-output "cluster_internal_sg_id" {
-  description = "The ID of the baseline cluster internal security group"
-  value       = aws_security_group.cluster_internal.id
+output "coordinator_sg_id" {
+  description = "Security Group ID for Coordinator node"
+  value       = aws_security_group.coordinator.id
+}
+
+output "shard_sg_id" {
+  description = "Security Group ID for Shard nodes (least-privilege SG-to-SG)"
+  value       = aws_security_group.shard.id
+}
+
+output "s3_endpoint_id" {
+  description = "Gateway VPC Endpoint ID for Amazon S3"
+  value       = aws_vpc_endpoint.s3.id
+}
+
+output "dynamodb_endpoint_id" {
+  description = "Gateway VPC Endpoint ID for Amazon DynamoDB"
+  value       = aws_vpc_endpoint.dynamodb.id
 }
